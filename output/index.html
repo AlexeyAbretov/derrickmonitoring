@@ -20,37 +20,43 @@
         <div id="alertsGrid">
 
         </div>
-        <div id="tagAlerts">
+    </div>
+    <div id="tagsWindow">
+        <div id="tagsGrid">
 
         </div>
     </div>
-    <div id="tagsWindow">
-            <div id="tagsGrid">
-    
-            </div>
-        </div>
+    <div id="chartWindow">
+        <div id="chart"></div>
+    </div>
     <div class="app">
-        <div class="left">
-            <div id="treeview-left"></div>
-        </div>
-        <div class="right">
-            <div class="dataContainer">
-                <div>
-                    <select id="chartType">
-                        <option>Line</option>
-                        <option>Bar</option>
-                    </select>
-                    <select id="period">
-                        <option>1m</option>
-                        <option>1h</option>
-                        <option>8h</option>
-                    </select>
-                    <button id="refresh">Обновить</button>
-                    <button id="alerts">Журнал событий</button>
-
-                    <div id="chart"></div>
-                    <div id="tagData"></div>
-                </div>
+        <div id="vertical">
+            <div class="left">
+                <div id="treeview-left"></div>
+            </div>
+            <div class="right">
+                <select id="chartType">
+                    <option>Line</option>
+                    <option>Bar</option>
+                </select>
+                <select id="date">
+                    <option>1h</option>
+                    <option>8h</option>
+                    <option>12h</option>
+                    <option>24h</option>
+                    <option>3d</option>
+                    <option>1w</option>
+                </select>
+                <select id="period">
+                    <option>1m</option>
+                    <option>1h</option>
+                    <option>8h</option>
+                </select>
+                <button id="refresh">Обновить</button>
+                <button id="alerts">Журнал событий</button>
+                <div id="chart1"></div>
+                <div id="chart2"></div>
+                <div id="chart3"></div>
             </div>
         </div>
     </div>

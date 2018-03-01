@@ -25,7 +25,6 @@ const internalFetch = (url, options) => {
         });
 };
 
-let treeData = null;
 let itemsById = {};
 
 internalFetch('http://95.163.251.187/api/v1/tag/hierarchy', {
@@ -53,10 +52,10 @@ internalFetch('http://95.163.251.187/api/v1/tag/hierarchy', {
         });
     };
 
-    treeData = prepareData(response || [], null);
+    const data = prepareData(response || [], null);
 
     var dataSource = new kendo.data.HierarchicalDataSource({
-        data: treeData,
+        data: data,
         schema: {
             model: {
                 children: "hierarchy",
@@ -69,47 +68,42 @@ internalFetch('http://95.163.251.187/api/v1/tag/hierarchy', {
         dataSource,
         dataTextField: ["description"],
         change: function (e) {
-            renderData();
+            renderTagChart();
         }
     });
 
-    $("#chartType").kendoDropDownList({
-        index: 0,
-        change: function (e) {
-            renderData();
-        }
-    });
+    renderDashboardCharts();
+});
 
-    $("#period").kendoDropDownList({
-        index: 0,
-        change: function (e) {
-            renderData();
-        }
-    });
+$("#vertical").kendoSplitter({
+    panes: [
+        { collapsible: false, size: "20%" },
+        { collapsible: false },
+    ]
+});
 
-    $("#refresh").kendoButton({
-        click: function (e) {
-            renderData();
-        }
-    });
+$("#chartType").kendoDropDownList();
+$("#date").kendoDropDownList();
+$("#period").kendoDropDownList();
 
-    $("#alerts").kendoButton({
-        click: function (e) {
-            renderAlerts();
-        }
-    });
+$("#refresh").kendoButton({
+    click: function (e) {
+        renderDashboardCharts();
+    }
+});
+
+$("#alerts").kendoButton({
+    click: function (e) {
+        renderAlerts();
+    }
 });
 
 function renderAlerts() {
-    // $("#tagAlerts").text('');
-
     var { tag } = getParams();
 
     var data = getTagAlerts(tag);
 
     data.then((x) => {
-        // $("#tagAlerts").text(JSON.stringify(x));
-
         const alerts = x.map(w => ({
             id: w.rule_id,
             rule: w.rule,
@@ -162,18 +156,111 @@ function renderAlerts() {
     });
 }
 
-function renderData() {
-    let { tag, period, type, level, id } = getParams();
+var chart1 = [
+    'WQ2_0151_12_106_09.Well191.ESP.Status_Local',
+    'WQ2_0151_12_106_09.Well191.ESP.Underload_SP',
+    'WQ2_0151_12_106_09.Well191.ESP.Status_LastShutdownReason',
+    'WQ2_0151_12_106_09.Well191.ESP.HIDCPassiveCurrentLeakage_Enable'
+];
+
+var chart2 = [
+    'WQ2_0151_12_106_09.Well191.Well.IPM_WaterRate_Std',
+    'WQ2_0151_12_106_09.Well191.Well.PIC004_CV',
+    'WQ2_0151_12_106_09.Well191.Well.WellTest_EndTime'
+];
+
+var chart3 = [
+    'WQ2_0151_12_106_09.Well191.Well.IPM_OilRate_Std'
+];
+
+function renderDashboardCharts() {
+    let { type, period, from, to } = getParams();
+
+    renderDashboardChart('chart1', type, period, from, to);
+    renderDashboardChart('chart2', type, period, from, to);
+    renderDashboardChart('chart3', type, period, from, to);
+}
+
+function renderDashboardChart(name, type, period, from, to) {
+    Promise
+        .all(window[name].map(x => getTagData(x, period, from, to)))
+        .then(responses => {
+            let series = [];
+            let categories = [];
+
+            responses.forEach(x => {
+                const data = ((x || {}).data || []);
+
+                data.forEach(d => {
+                    const t = new Date(d.time).toLocaleFormat('%d.%m.%Y %H:%M:%S');
+                    if (categories.indexOf(t) == -1) {
+                        categories.push(t);
+                    }
+                });
+            });
+
+            categories = categories.sort((a, b) => a - b);
+
+            responses.forEach((x, index) => {
+                const data = ((x || {}).data || []).sort((a, b) => a.time - b.time);
+
+                series.push({
+                    name: window[name][index],
+                    data: []
+                });
+
+                categories.forEach(c => {
+                    const r = data.filter(d => new Date(d.time)
+                        .toLocaleFormat('%d.%m.%Y %H:%M:%S') === c);
+                    if (r.length) {
+                        series[series.length - 1].data.push(r[0].value);
+                    } else {
+                        series[series.length - 1].data.push(null);
+                    }
+                });
+            });
+
+            createChat(
+                `#${name}`,
+                type.toLowerCase(),
+                series,
+                categories);
+        });
+}
+
+function renderTagChart() {
+    let { tag, level, id } = getParams();
 
     if (level === 4) {
-        let data = getTagData(tag, period);
+        let to = parseInt((Date.now() / 1000).toFixed(0)) * 1000;
+        let from = new Date();
+        let offset = 24;
+        from = parseInt((from.setHours(from.getHours() - offset) / 1000).toFixed(0)) * 1000;
+
+        let data = getTagData(tag, '1m', from, to);
 
         data.then((x) => {
             const chartData = prepareChartData((x || {}).data || []);
 
-            createChat(type.toLowerCase(), chartData.data, chartData.categories);
+            createChat(
+                "#chart",
+                'line',
+                [{
+                    name: tag,
+                    data: chartData.data
+                }],
+                chartData.categories);
 
-            // $("#tagData").text(JSON.stringify(x));
+            $("#chartWindow").kendoWindow({
+                width: '100%',
+                title: "График",
+                visible: false,
+                actions: [
+                    "Minimize",
+                    "Maximize",
+                    "Close"
+                ],
+            }).data("kendoWindow").center().open();
         });
     } else if (level === 2 || level === 3) {
         let tags = level === 3 ?
@@ -232,24 +319,25 @@ function prepareChartData(data = []) {
         categories: []
     };
 
+    data = data.sort((a, b) => a.time - b.time);
+
     data.forEach((x, index) => {
         const v = x.value;
         const t = x.time;
 
-        const date = new Date(t).toLocaleFormat('%d.%m.%Y %H:%M:%S')
+        const date = new Date(t).toLocaleFormat('%d.%m.%Y %H:%M:%S');
 
-        if (result.categories.indexOf(date) == -1 &&
-            v >= 0) {
+        if (result.categories.indexOf(date) == -1) {
             result.categories.push(date);
             result.data.push(v);
         }
-    })
+    });
 
     return result;
 }
 
-function getTagData(tag, period) {
-    return internalFetch(`http://95.163.251.187/api/v1/data?tag=${tag}&preriod=${period}`, {
+function getTagData(tag, period, from, to) {
+    return internalFetch(`http://95.163.251.187/api/v1/data?tag=${tag}&period=${period}&from_ts=${from}&to_ts=${to}`, {
         method: 'GET'
     })
 }
@@ -272,23 +360,51 @@ function getParams() {
     const id = (data || {}).id;
     const level = (data || {}).itemLevel;
 
-    const periodList = $("#period").data("kendoDropDownList");
-    const period = periodList.value();
+    const period = $("#period").data("kendoDropDownList").value();
+    const type = $("#chartType").data("kendoDropDownList").value();
+    const date = $("#date").data("kendoDropDownList").value();
 
-    const chartTypeList = $("#chartType").data("kendoDropDownList");
-    const type = chartTypeList.value();
+    let to = parseInt((Date.now() / 1000).toFixed(0)) * 1000;
+    let from = new Date();
+
+    let offset = 1;
+
+    switch (date) {
+        case '8h':
+            offset = 8;
+            break;
+        case '12h':
+            offset = 12;
+            break;
+        case '24h':
+            offset = 24;
+            break;
+        case '3d':
+            offset = 24 * 3;
+            break;
+        case '1w':
+            offset = 24 * 7;
+            break;
+        case '1h':
+        default:
+            offset = 1;
+            break;
+    }
+    from = parseInt((from.setHours(from.getHours() - offset) / 1000).toFixed(0)) * 1000;
 
     return {
         tag,
         period,
         type,
         level,
-        id
+        id,
+        to,
+        from
     }
 }
 
-function createChat(type = 'line', data = [], categories = []) {
-    $("#chart").kendoChart({
+function createChat(id, type = 'line', series = [{ name: 'main', data: [] }], categories = []) {
+    $(id).kendoChart({
         title: {
             text: "Chart"
         },
@@ -302,10 +418,7 @@ function createChat(type = 'line', data = [], categories = []) {
             type: type === 'bar' ? 'column' : type,
             style: "smooth"
         },
-        series: [{
-            name: "main",
-            data
-        }],
+        series: series,
         valueAxis: {
             labels: {
                 format: "{0}"

@@ -5,25 +5,20 @@ html, body {
 
 .app
 {
-    display: flex;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: stretch;
-    height: 100%;
+    height: 100%; 
 }
 
 .left
 {
-    overflow: scroll;
-    flex-grow: 1;
-    flex-basis: 20%;
     background: lightgoldenrodyellow;
 }
 
 .right
 {
-    overflow: scroll;
-    flex-grow: 3;
-    flex-basis: 80%;
     background: lightblue;
+} 
+
+#vertical {
+    height: 100%;
+    margin: 0 auto;
 }
