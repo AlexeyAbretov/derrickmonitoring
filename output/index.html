@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Oil derrick monitoring</title>
+
+    <link href="../src/css/kendo.common.min.css" rel="stylesheet">
+    <link href="../src/css/kendo.default.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../src/css/main.css">
+
+    <script src="../src/js/jquery.min.js"></script>
+    <script src="../src/js/kendo.all.min.js"></script>
+</head>
+
+<body>
+    <div class="app">
+        <div class="left">
+            <div id="treeview-left"></div>
+        </div>
+        <div class="right">
+            <select id="chartType">
+                <option>Line</option>
+                <option>Bar</option>
+            </select>
+            <select id="period">
+                <option>1m</option>
+                <option>1h</option>
+                <option>8h</option>
+            </select>
+
+            <div id="chart"></div>
+            <div id="tagData"></div>
+        </div>
+    </div>
+    <script src="../src/js/app.js"></script>
+</body>
+
+</html>
