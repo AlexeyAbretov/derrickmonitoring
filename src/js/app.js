@@ -25,6 +25,7 @@ const internalFetch = (url, options) => {
         });
 };
 
+let intervalTicket = 0;
 internalFetch('http://95.163.251.187/api/v1/tag/hierarchy', {
     method: 'GET'
 }).then((response) => {
@@ -32,7 +33,7 @@ internalFetch('http://95.163.251.187/api/v1/tag/hierarchy', {
         return data.map(x => ({
             tag: x.tag || 'tag0',
             fullTag: tag ? `${tag}.${x.tag}` : '',
-            description: x.description || 'Показатели',
+            description: x.description || 'Месторождения',
             hierarchy: x.hierarchy ?
                 processItems(
                     Array.isArray(x.hierarchy) ?
@@ -59,6 +60,7 @@ internalFetch('http://95.163.251.187/api/v1/tag/hierarchy', {
         dataSource,
         dataTextField: ["description"],
         change: function (e) {
+            renderAlerts();
             renderChart();
         }
     });
@@ -69,6 +71,7 @@ internalFetch('http://95.163.251.187/api/v1/tag/hierarchy', {
             renderChart();
         }
     });
+
     $("#period").kendoDropDownList({
         index: 0,
         change: function (e) {
@@ -76,6 +79,64 @@ internalFetch('http://95.163.251.187/api/v1/tag/hierarchy', {
         }
     });
 });
+
+function renderAlerts() {
+    // $("#tagAlerts").text('');
+
+    if (intervalTicket) {
+        clearInterval(intervalTicket);
+    }
+
+    var { tag } = getParams();
+
+    var data = getTagAlerts(tag);
+
+    data.then((x) => {
+        // $("#tagAlerts").text(JSON.stringify(x));
+
+        const alerts = x.map(w => ({
+            id: w.rule_id,
+            rule: w.rule,
+            bDate: new Date(w.time_begin).toLocaleFormat('%d.%m.%Y %H:%M:%S'),
+            eDate: new Date(w.time_end).toLocaleFormat('%d.%m.%Y %H:%M:%S'),
+            val: w.count
+        }));
+
+        $("#alertsGrid").kendoGrid({
+            dataSource: {
+                data: alerts,
+                schema: {
+                    model: {
+                        fields: {
+                            id: { type: "number" },
+                            rule: { type: "string" },
+                            bDate: { type: "string" },
+                            eDate: { type: "string" },
+                            val: { type: "number" }
+                        }
+                    }
+                },
+                pageSize: 20
+            },
+            scrollable: true,
+            sortable: true,
+            filterable: true,
+            pageable: {
+                input: true,
+                numeric: false
+            },
+            columns: [
+                { field: "id", title: "Номер" },
+                { field: "rule", title: "Правило" },
+                { field: "bDate", title: "Дата начала" },
+                { field: "eDate", title: "Дата окончания" },
+                { field: "val", title: "Последнее значение" }
+            ]
+        });
+
+        intervalTicket = setInterval(renderAlerts, 5000);
+    });
+}
 
 function renderChart() {
     var { tag, period, type } = getParams();
@@ -87,7 +148,7 @@ function renderChart() {
 
         createChat(type.toLowerCase(), chartData.data, chartData.categories);
 
-        $("#tagData").text(JSON.stringify(x))
+        // $("#tagData").text(JSON.stringify(x));
     });
 }
 
@@ -98,11 +159,6 @@ function prepareChartData(data = []) {
     };
 
     data.forEach((x, index) => {
-
-        // if (index >= 400){
-        //     return true;
-        // }
-
         const v = x.value;
         const t = x.time;
 
@@ -120,6 +176,12 @@ function prepareChartData(data = []) {
 
 function getTagData(tag, period) {
     return internalFetch(`http://95.163.251.187/api/v1/data?tag=${tag}&preriod=${period}`, {
+        method: 'GET'
+    })
+}
+
+function getTagAlerts(tag) {
+    return internalFetch(`http://95.163.251.187/api/v1/alerts?tag=${tag}`, {
         method: 'GET'
     })
 }
