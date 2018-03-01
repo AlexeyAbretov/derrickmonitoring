@@ -182,11 +182,13 @@ function renderData() {
             })) :
             [];
 
-        itemsById[id].forEach(x =>
-            tags = tags.concat(x.hierarchy.map(z => ({
-                title: z.description
-            })))
-        )
+        if (level === 2) {
+            itemsById[id].forEach(x =>
+                tags = tags.concat(x.hierarchy.map(z => ({
+                    title: z.description
+                })))
+            )
+        }
 
         $("#tagsGrid").kendoGrid({
             dataSource: {
