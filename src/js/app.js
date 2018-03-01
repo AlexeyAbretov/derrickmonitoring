@@ -25,29 +25,38 @@ const internalFetch = (url, options) => {
         });
 };
 
-let intervalTicket = 0;
+let treeData = null;
+let itemsById = {};
+
 internalFetch('http://95.163.251.187/api/v1/tag/hierarchy', {
     method: 'GET'
 }).then((response) => {
     const prepareData = function processItems(data = [], tag) {
-        return data.map(x => ({
-            tag: x.tag || 'tag0',
-            fullTag: tag ? `${tag}.${x.tag}` : '',
-            description: x.description || 'Месторождения',
-            hierarchy: x.hierarchy ?
+        return data.map(x => {
+            const hierarchy = x.hierarchy ?
                 processItems(
                     Array.isArray(x.hierarchy) ?
                         x.hierarchy :
                         [x.hierarchy],
                     tag ? `${tag}.${x.tag}` : x.tag) :
-                null
-        }));
+                null;
+
+            itemsById[x.tag || 'tag0'] = hierarchy;
+
+            return {
+                tag: x.tag || 'tag0',
+                fullTag: tag ? `${tag}.${x.tag}` : '',
+                description: x.description || 'Месторождения',
+                itemLevel: x.level,
+                hierarchy
+            }
+        });
     };
 
-    const data = prepareData(response || [], null);
+    treeData = prepareData(response || [], null);
 
     var dataSource = new kendo.data.HierarchicalDataSource({
-        data: data,
+        data: treeData,
         schema: {
             model: {
                 children: "hierarchy",
@@ -60,32 +69,39 @@ internalFetch('http://95.163.251.187/api/v1/tag/hierarchy', {
         dataSource,
         dataTextField: ["description"],
         change: function (e) {
-            renderAlerts();
-            renderChart();
+            renderData();
         }
     });
 
     $("#chartType").kendoDropDownList({
         index: 0,
         change: function (e) {
-            renderChart();
+            renderData();
         }
     });
 
     $("#period").kendoDropDownList({
         index: 0,
         change: function (e) {
-            renderChart();
+            renderData();
+        }
+    });
+
+    $("#refresh").kendoButton({
+        click: function (e) {
+            renderData();
+        }
+    });
+
+    $("#alerts").kendoButton({
+        click: function (e) {
+            renderAlerts();
         }
     });
 });
 
 function renderAlerts() {
     // $("#tagAlerts").text('');
-
-    if (intervalTicket) {
-        clearInterval(intervalTicket);
-    }
 
     var { tag } = getParams();
 
@@ -134,22 +150,78 @@ function renderAlerts() {
             ]
         });
 
-        intervalTicket = setInterval(renderAlerts, 5000);
+        $("#alertsWindow").kendoWindow({
+            title: "Журнал событий",
+            visible: false,
+            actions: [
+                "Minimize",
+                "Maximize",
+                "Close"
+            ],
+        }).data("kendoWindow").center().open();
     });
 }
 
-function renderChart() {
-    var { tag, period, type } = getParams();
+function renderData() {
+    let { tag, period, type, level, id } = getParams();
 
-    var data = getTagData(tag, period);
+    if (level === 4) {
+        let data = getTagData(tag, period);
 
-    data.then((x) => {
-        const chartData = prepareChartData((x || {}).data || []);
+        data.then((x) => {
+            const chartData = prepareChartData((x || {}).data || []);
 
-        createChat(type.toLowerCase(), chartData.data, chartData.categories);
+            createChat(type.toLowerCase(), chartData.data, chartData.categories);
 
-        // $("#tagData").text(JSON.stringify(x));
-    });
+            // $("#tagData").text(JSON.stringify(x));
+        });
+    } else if (level === 2 || level === 3) {
+        let tags = level === 3 ?
+            itemsById[id].map(x => ({
+                title: x.description
+            })) :
+            [];
+
+        itemsById[id].forEach(x =>
+            tags = tags.concat(x.hierarchy.map(z => ({
+                title: z.description
+            })))
+        )
+
+        $("#tagsGrid").kendoGrid({
+            dataSource: {
+                data: tags,
+                schema: {
+                    model: {
+                        fields: {
+                            title: { type: "string" }
+                        }
+                    }
+                },
+                pageSize: 20
+            },
+            scrollable: true,
+            sortable: true,
+            filterable: true,
+            pageable: {
+                input: true,
+                numeric: false
+            },
+            columns: [
+                { field: "title", title: "Название" },
+            ]
+        });
+
+        $("#tagsWindow").kendoWindow({
+            title: "Показатели",
+            visible: false,
+            actions: [
+                "Minimize",
+                "Maximize",
+                "Close"
+            ],
+        }).data("kendoWindow").center().open();
+    }
 }
 
 function prepareChartData(data = []) {
@@ -195,6 +267,8 @@ function getParams() {
     const data = tv.dataItem(selected);
 
     const tag = (data || {}).fullTag;
+    const id = (data || {}).id;
+    const level = (data || {}).itemLevel;
 
     const periodList = $("#period").data("kendoDropDownList");
     const period = periodList.value();
@@ -205,7 +279,9 @@ function getParams() {
     return {
         tag,
         period,
-        type
+        type,
+        level,
+        id
     }
 }
 
