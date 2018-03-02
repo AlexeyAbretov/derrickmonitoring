@@ -426,7 +426,7 @@ function createChat(id, type = 'line', series = [{ name: 'main', data: [] }], ca
             line: {
                 visible: false
             },
-            axisCrossingValue: -10
+            axisCrossingValue: [-1e6, -1e6]
         },
         categoryAxis: {
             categories,
