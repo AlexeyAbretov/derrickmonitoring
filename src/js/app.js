@@ -407,7 +407,7 @@ function createChat(id, type = 'line', series = [{ name: 'main', data: [] }], ca
     $(id).kendoChart({
         title: {
             text: "Chart"
-        },
+        },        
         legend: {
             position: "bottom"
         },
@@ -416,9 +416,15 @@ function createChat(id, type = 'line', series = [{ name: 'main', data: [] }], ca
         },
         seriesDefaults: {
             type: type === 'bar' ? 'column' : type,
-            style: "smooth"
+            style: "smooth",
+            markers: {
+                visible: true,
+                size: categories.length >= 100 ?
+                    2 :
+                    5
+            }
         },
-        series: series,
+        series,
         valueAxis: {
             labels: {
                 format: "{0}"
