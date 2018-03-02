@@ -199,7 +199,8 @@ function renderDashboardChart(name, type, period, from, to) {
                 });
             });
 
-            categories = categories.sort((a, b) => a - b);
+            categories = categories
+                .sort((a, b) => Date.parse(a) - Date.parse(b));
 
             responses.forEach((x, index) => {
                 const data = ((x || {}).data || []).sort((a, b) => a.time - b.time);
