@@ -98,21 +98,54 @@ $("#alerts").kendoButton({
     }
 });
 
-function renderAlerts() {
+let alertsInterval = 0;
+let refreshAlertsButton = null;
+
+function prepareAlertsGrid() {
+    if (alertsInterval) {
+        clearInterval(alertsInterval);
+    }
+
     var { tag } = getParams();
 
     var data = getTagAlerts(tag);
 
-    data.then((x) => {
-        const alerts = x.map(w => ({
-            id: w.rule_id,
-            rule: w.rule,
-            bDate: new Date(w.time_begin).toLocaleFormat('%d.%m.%Y %H:%M:%S'),
-            eDate: new Date(w.time_end).toLocaleFormat('%d.%m.%Y %H:%M:%S'),
-            val: w.count
-        }));
+    return data.then((response) => {
+        const sorted = response.sort((a, b) => a.time_begin - b.time_begin);
+        const alerts = [];
 
-        $("#alertsGrid").kendoGrid({
+        sorted.forEach(w => {
+            let bDate = w.time_begin;
+            let eDate = w.time_end;
+
+            if (!bDate.toString().endsWith('000')) {
+                bDate *= 1e3;
+            }
+
+            if (!eDate.toString().endsWith('000')) {
+                eDate *= 1e3;
+            }
+
+            const items = alerts.filter(x => x.id === w.rule_id);
+            if (!items.length) {
+                alerts.push({
+                    id: w.rule_id,
+                    rule: w.rule,
+                    bDate: new Date(bDate).toLocaleFormat('%d.%m.%Y %H:%M:%S'),
+                    eDate: new Date(eDate).toLocaleFormat('%d.%m.%Y %H:%M:%S'),
+                    val: w.count,
+                    isActive: w.alert
+                });
+            } else {
+                items[0].bDate = new Date(bDate).toLocaleFormat('%d.%m.%Y %H:%M:%S');
+                items[0].eDate = new Date(eDate).toLocaleFormat('%d.%m.%Y %H:%M:%S');
+                items[0].val = w.count;
+                items[0].isActive = w.alert;
+            }
+        });
+
+        var grid = $("#alertsGrid").kendoGrid({
+            toolbar: kendo.template($("#alertGridToolbartemplate").html()),
             dataSource: {
                 data: alerts,
                 schema: {
@@ -122,9 +155,13 @@ function renderAlerts() {
                             rule: { type: "string" },
                             bDate: { type: "string" },
                             eDate: { type: "string" },
-                            val: { type: "number" }
+                            val: { type: "number" },
+                            isActive: { type: "boolean" }
                         }
-                    }
+                    },
+                    total: function (response) {
+                        return response.length;
+                    },
                 },
                 pageSize: 20
             },
@@ -141,17 +178,49 @@ function renderAlerts() {
                 { field: "bDate", title: "Дата начала" },
                 { field: "eDate", title: "Дата окончания" },
                 { field: "val", title: "Последнее значение" }
-            ]
+            ],
+            dataBound: function (e) {
+                var rows = e.sender.tbody.children();
+
+                for (var j = 0; j < rows.length; j++) {
+                    var row = $(rows[j]);
+                    var dataItem = e.sender.dataItem(row);
+
+                    if (dataItem.get("isActive") == true) {
+                        row.addClass("red");
+                    } else {
+                        row.addClass("green");
+                    }
+                }
+            }
         });
 
+        if (!refreshAlertsButton) {
+            refreshAlertsButton = grid.find("#refreshAlerts").kendoButton({
+                click: function (e) {
+                    prepareAlertsGrid();
+                }
+            });
+        }
+
+        alertsInterval = setInterval(prepareAlertsGrid, 5000);
+    });
+}
+
+function renderAlerts() {
+    prepareAlertsGrid().then(_ => {
         $("#alertsWindow").kendoWindow({
             title: "Журнал событий",
+            width: '80%',
             visible: false,
             actions: [
                 "Minimize",
                 "Maximize",
                 "Close"
             ],
+            close: function () {
+                clearInterval(alertsInterval);
+            }
         }).data("kendoWindow").center().open();
     });
 }
@@ -313,6 +382,7 @@ function renderTagChart() {
             title: "Показатели",
             visible: false,
             width: '50%',
+            height: '70%',
             actions: [
                 "Minimize",
                 "Maximize",
@@ -478,4 +548,18 @@ if (!Date.prototype.toLocaleFormat) {
             format = format.replace('%' + k, f[k] < 10 ? "0" + f[k] : f[k]);
         return format;
     }
+}
+
+if (!String.prototype.endsWith) {
+    Object.defineProperty(String.prototype, 'endsWith', {
+        value: function (searchString, position) {
+            var subjectString = this.toString();
+            if (position === undefined || position > subjectString.length) {
+                position = subjectString.length;
+            }
+            position -= searchString.length;
+            var lastIndex = subjectString.indexOf(searchString, position);
+            return lastIndex !== -1 && lastIndex === position;
+        }
+    });
 }
