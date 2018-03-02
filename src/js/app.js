@@ -85,6 +85,7 @@ $("#vertical").kendoSplitter({
 $("#chartType").kendoDropDownList();
 $("#date").kendoDropDownList();
 $("#period").kendoDropDownList();
+$("#refreshRate").kendoDropDownList();
 
 $("#refresh").kendoButton({
     click: function (e) {
@@ -242,16 +243,26 @@ var chart3 = [
     'WQ2_0151_12_106_09.Well191.Well.IPM_OilRate_Std'
 ];
 
+let renderDashboardChartsInterval = 0;
 function renderDashboardCharts() {
-    let { type, period, from, to } = getParams();
 
-    renderDashboardChart('chart1', type, period, from, to);
-    renderDashboardChart('chart2', type, period, from, to);
-    renderDashboardChart('chart3', type, period, from, to);
+    if (renderDashboardChartsInterval) {
+        clearInterval(renderDashboardChartsInterval);
+    }
+
+    let { type, period, from, to, refreshRate } = getParams();
+
+    renderDashboardChart('chart1', type, period, from, to)
+        .then(_ => renderDashboardChart('chart2', type, period, from, to)
+            .then(_ => renderDashboardChart('chart3', type, period, from, to)
+                .then(_ => {
+                    renderDashboardChartsInterval = setInterval(
+                        renderDashboardCharts, refreshRate);
+                })));
 }
 
 function renderDashboardChart(name, type, period, from, to) {
-    Promise
+    return Promise
         .all(window[name].map(x => getTagData(x, period, from, to)))
         .then(responses => {
             let series = [];
@@ -295,6 +306,8 @@ function renderDashboardChart(name, type, period, from, to) {
                 type.toLowerCase(),
                 series,
                 categories);
+
+            console.log(`complete ${name}!!!`)
         });
 }
 
@@ -442,6 +455,30 @@ function getParams() {
     const period = $("#period").data("kendoDropDownList").value();
     const type = $("#chartType").data("kendoDropDownList").value();
     const date = $("#date").data("kendoDropDownList").value();
+    const refreshRateDirtyValue = $("#refreshRate").data("kendoDropDownList").value();
+
+    let refreshRate = 15;
+
+    switch (refreshRateDirtyValue) {
+        case '5s':
+            refreshRate = 5000;
+            break;
+        case '15s':
+            refreshRate = 15000;
+            break;
+        case '30s':
+            refreshRate = 30000;
+            break;
+        case '1m':
+            refreshRate = 60000;
+            break;
+        case '15m':
+            refreshRate = 15 * 60000;
+            break;
+        default:
+            refreshRate = 15000;
+            break;
+    }
 
     let to = parseInt((Date.now() / 1000).toFixed(0)) * 1000;
     let from = new Date();
@@ -478,7 +515,8 @@ function getParams() {
         level,
         id,
         to,
-        from
+        from,
+        refreshRate
     }
 }
 

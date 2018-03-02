@@ -18,6 +18,10 @@ html, body {
 .right
 {
     background: lightblue;
+    clear: both;
+    display: block;
+    content: '';
+    float: none;
 } 
 
 #vertical {
@@ -31,4 +35,14 @@ html, body {
 
 .green {
     color: green;
+}
+
+.toolbar_item {
+    display: block;
+    float: left;
+    margin-right: 10px;
+}
+
+.toolbar_buttons {
+    margin-top: 18px;
 }
