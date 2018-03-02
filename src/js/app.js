@@ -278,18 +278,22 @@ function renderTagChart() {
             )
         }
 
-        $("#tagsGrid").kendoGrid({
-            dataSource: {
-                data: tags,
-                schema: {
-                    model: {
-                        fields: {
-                            title: { type: "string" }
-                        }
+        var dataSource = new kendo.data.DataSource({
+            schema: {
+                model: {
+                    fields: {
+                        title: { type: "string" }
                     }
                 },
-                pageSize: 20
+                total: function (response) {
+                    return response.length;
+                },
             },
+            pageSize: 20,
+            data: tags
+        });
+
+        $("#tagsGrid").kendoGrid({
             scrollable: true,
             sortable: true,
             filterable: true,
@@ -302,9 +306,13 @@ function renderTagChart() {
             ]
         });
 
+        var grid = $("#tagsGrid").data("kendoGrid");
+        grid.setDataSource(dataSource);
+
         $("#tagsWindow").kendoWindow({
             title: "Показатели",
             visible: false,
+            width: '50%',
             actions: [
                 "Minimize",
                 "Maximize",
@@ -408,7 +416,7 @@ function createChat(id, type = 'line', series = [{ name: 'main', data: [] }], ca
     $(id).kendoChart({
         title: {
             text: "Chart"
-        },        
+        },
         legend: {
             position: "bottom"
         },
