@@ -434,7 +434,10 @@ function createChat(id, type = 'line', series = [{ name: 'main', data: [] }], ca
                 visible: false
             },
             labels: {
-                rotation: "auto"
+                rotation: "auto",
+                step: categories.length >= 100 ?
+                    parseInt((categories.length / 20).toFixed(0)) :
+                    null
             }
         },
         tooltip: {
