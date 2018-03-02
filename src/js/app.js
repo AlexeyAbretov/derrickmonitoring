@@ -119,11 +119,11 @@ function prepareAlertsGrid() {
             let bDate = w.time_begin;
             let eDate = w.time_end;
 
-            if (!bDate.toString().endsWith('000')) {
+            if (!bDate.toString().length == 10) {
                 bDate *= 1e3;
             }
 
-            if (!eDate.toString().endsWith('000')) {
+            if (!eDate.toString().length == 10) {
                 eDate *= 1e3;
             }
 
@@ -306,11 +306,10 @@ function renderDashboardChart(name, type, period, from, to) {
                 type.toLowerCase(),
                 series,
                 categories);
-
-            console.log(`complete ${name}!!!`)
         });
 }
 
+let tagsDataIntervalTicket = 0;
 function renderTagChart() {
     let { tag, level, id } = getParams();
 
@@ -322,8 +321,8 @@ function renderTagChart() {
 
         let data = getTagData(tag, '1m', from, to);
 
-        data.then((x) => {
-            const chartData = prepareChartData((x || {}).data || []);
+        data.then((response) => {
+            const chartData = prepareChartData((response || {}).data || []);
 
             createChat(
                 "#chart",
@@ -346,16 +345,22 @@ function renderTagChart() {
             }).data("kendoWindow").center().open();
         });
     } else if (level === 2 || level === 3) {
+        clearInterval(tagsDataIntervalTicket);
+
         let tags = level === 3 ?
             itemsById[id].map(x => ({
-                title: x.description
+                title: x.description,
+                id: x.fullTag,
+                state: ''
             })) :
             [];
 
         if (level === 2) {
             itemsById[id].forEach(x =>
                 tags = tags.concat(x.hierarchy.map(z => ({
-                    title: z.description
+                    title: z.description,
+                    id: x.fullTag,
+                    state: ''
                 })))
             )
         }
@@ -364,7 +369,8 @@ function renderTagChart() {
             schema: {
                 model: {
                     fields: {
-                        title: { type: "string" }
+                        title: { type: "string" },
+                        state: { type: "string" }
                     }
                 },
                 total: function (response) {
@@ -372,7 +378,8 @@ function renderTagChart() {
                 },
             },
             pageSize: 20,
-            data: tags
+            data: tags,
+            autoSync: true
         });
 
         $("#tagsGrid").kendoGrid({
@@ -385,11 +392,21 @@ function renderTagChart() {
             },
             columns: [
                 { field: "title", title: "Название" },
-            ]
+                { field: "state", title: "Значение" },
+            ],
+            page: () => {
+                clearInterval(tagsDataIntervalTicket);
+                setTimeout(() => {
+                    getLastTagsState().then(_ =>
+                        tagsDataIntervalTicket = setInterval(getLastTagsState, 5000))
+                }, 0);
+            }
         });
 
         var grid = $("#tagsGrid").data("kendoGrid");
         grid.setDataSource(dataSource);
+
+        getLastTagsState();
 
         $("#tagsWindow").kendoWindow({
             title: "Показатели",
@@ -401,8 +418,40 @@ function renderTagChart() {
                 "Maximize",
                 "Close"
             ],
+            close: () => {
+                clearInterval(tagsDataIntervalTicket);
+            },
+            open: () => {
+                clearInterval(tagsDataIntervalTicket);
+                tagsDataIntervalTicket = setInterval(getLastTagsState, 5000);
+            }
         }).data("kendoWindow").center().open();
     }
+}
+
+function getLastTagsState() {
+    const grid = $("#tagsGrid").data("kendoGrid");
+    const view = grid.dataSource.view();
+
+    let to = parseInt((Date.now() / 1000).toFixed(0)) * 1000;
+    let from = new Date();
+    let offset = 24;
+    from = parseInt((from.setHours(from.getHours() - offset) / 1000).toFixed(0)) * 1000;
+
+    let data = getTagData(view[0].id, '8h', from, to);
+    return Promise
+        .all(view.map(x => getTagData(x.id, '8h', from, to)))
+        .then(responses => {
+            responses.forEach((res, index) => {
+                const arr = ((res || {}).data || []);
+                const val = arr[arr.length - 1].value
+                if (view[index].set) {
+                    view[index].set('state', val);
+                } else {
+                    view[index].state = val;
+                }
+            });
+        });
 }
 
 function prepareChartData(data = []) {
