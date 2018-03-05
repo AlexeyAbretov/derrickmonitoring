@@ -13372,7 +13372,7 @@ function prepareAlertsGrid() {
 
     return data.then(function (response) {
         var sorted = response.sort(function (a, b) {
-            return a.time_begin - b.time_begin;
+            return b.time_begin - a.time_begin;
         });
         var alerts = [];
         var allAlerts = [];
@@ -13399,22 +13399,24 @@ function prepareAlertsGrid() {
                     rule: w.rule,
                     bDate: new Date(bDate).toLocaleFormat('%d.%m.%Y %H:%M:%S'),
                     eDate: new Date(eDate).toLocaleFormat('%d.%m.%Y %H:%M:%S'),
-                    val: w.count,
-                    isActive: w.alert
+                    count: w.count,
+                    isActive: w.alert,
+                    last_value: w.last_value
                 });
-            } else {
-                items[0].bDate = new Date(bDate).toLocaleFormat('%d.%m.%Y %H:%M:%S');
-                items[0].eDate = new Date(eDate).toLocaleFormat('%d.%m.%Y %H:%M:%S');
-                items[0].val = w.count;
-                items[0].isActive = w.alert;
-            }
+            } /* else {
+                 items[0].bDate = new Date(bDate).toLocaleFormat('%d.%m.%Y %H:%M:%S');
+                 items[0].eDate = new Date(eDate).toLocaleFormat('%d.%m.%Y %H:%M:%S');
+                 items[0].count = w.count;
+                 items[0].isActive = w.alert;
+              }*/
 
             allAlerts.push({
                 rule_id: w.rule_id,
                 rule: w.rule,
                 bDate: new Date(bDate).toLocaleFormat('%d.%m.%Y %H:%M:%S'),
                 eDate: new Date(eDate).toLocaleFormat('%d.%m.%Y %H:%M:%S'),
-                val: w.count,
+                count: w.count,
+                last_value: w.last_value,
                 isActive: w.alert
             });
         });
@@ -13428,7 +13430,8 @@ function prepareAlertsGrid() {
                         rule: { type: "string" },
                         bDate: { type: "string" },
                         eDate: { type: "string" },
-                        val: { type: "number" },
+                        count: { type: "number" },
+                        last_value: { type: "string" },
                         isActive: { type: "boolean" }
                     }
                 },
@@ -13449,7 +13452,7 @@ function prepareAlertsGrid() {
                 input: true,
                 numeric: false
             },
-            columns: [{ field: "rule_id", title: "Номер" }, { field: "rule", title: "Правило" }, { field: "bDate", title: "Дата начала" }, { field: "eDate", title: "Дата окончания" }, { field: "val", title: "Последнее значение" }],
+            columns: [{ field: "rule_id", title: "Номер" }, { field: "rule", title: "Правило" }, { field: "bDate", title: "Дата начала" }, { field: "eDate", title: "Дата окончания" }, { field: "count", title: "Число отчетов" }, { field: "last_value", title: "Последнее значение" }],
             dataBound: function dataBound(e) {
                 var rows = e.sender.tbody.children();
 
@@ -13477,7 +13480,8 @@ function prepareAlertsGrid() {
                         rule: { type: "string" },
                         bDate: { type: "string" },
                         eDate: { type: "string" },
-                        val: { type: "number" },
+                        count: { type: "number" },
+                        last_value: { type: "string" },
                         isActive: { type: "boolean" }
                     }
                 },
@@ -13498,7 +13502,7 @@ function prepareAlertsGrid() {
                 input: true,
                 numeric: false
             },
-            columns: [{ field: "rule_id", title: "Номер" }, { field: "rule", title: "Правило" }, { field: "bDate", title: "Дата начала" }, { field: "eDate", title: "Дата окончания" }, { field: "val", title: "Последнее значение" }],
+            columns: [{ field: "rule_id", title: "Номер" }, { field: "rule", title: "Правило" }, { field: "bDate", title: "Дата начала" }, { field: "eDate", title: "Дата окончания" }, { field: "count", title: "Число отчетов" }, { field: "last_value", title: "Последнее значение" }],
             dataBound: function dataBound(e) {
                 var rows = e.sender.tbody.children();
 
