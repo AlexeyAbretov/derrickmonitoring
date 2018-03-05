@@ -16,12 +16,15 @@
 </head>
 
 <body>
-    <div id="alertsWindow">
-        <script type="text/x-kendo-template" id="alertGridToolbartemplate">
-            <button id="refreshAlerts">Обновить</button>
-        </script>
+    <div id="alertsWindow" style="display: none">
+        <button id="refreshAlerts">Обновить</button>
+        <input type="checkbox" id="allAlerts" class="k-checkbox">
+        <label class="k-checkbox-label" for="allAlerts" style="margin-top: 10px">История</label>
 
         <div id="alertsGrid">
+
+        </div>
+        <div id="allAlertsGrid">
 
         </div>
     </div>
@@ -89,7 +92,7 @@
             </div>
         </div>
     </div>
-    <script src="../src/js/app.js"></script>
+    <script src="app.js"></script>
 </body>
 
 </html>

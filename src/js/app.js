@@ -99,13 +99,13 @@ $("#alerts").kendoButton({
     }
 });
 
-let alertsInterval = 0;
+// let alertsInterval = 0;
 let refreshAlertsButton = null;
 
 function prepareAlertsGrid() {
-    if (alertsInterval) {
-        clearInterval(alertsInterval);
-    }
+    // if (alertsInterval) {
+    //     clearInterval(alertsInterval);
+    // }
 
     var { tag } = getParams();
 
@@ -114,6 +114,7 @@ function prepareAlertsGrid() {
     return data.then((response) => {
         const sorted = response.sort((a, b) => a.time_begin - b.time_begin);
         const alerts = [];
+        const allAlerts = [];
 
         sorted.forEach(w => {
             let bDate = w.time_begin;
@@ -127,10 +128,11 @@ function prepareAlertsGrid() {
                 eDate *= 1e3;
             }
 
-            const items = alerts.filter(x => x.id === w.rule_id);
+            const items = alerts.filter(x => x.rule_id === w.rule_id);
+
             if (!items.length) {
                 alerts.push({
-                    id: w.rule_id,
+                    rule_id: w.rule_id,
                     rule: w.rule,
                     bDate: new Date(bDate).toLocaleFormat('%d.%m.%Y %H:%M:%S'),
                     eDate: new Date(eDate).toLocaleFormat('%d.%m.%Y %H:%M:%S'),
@@ -143,29 +145,40 @@ function prepareAlertsGrid() {
                 items[0].val = w.count;
                 items[0].isActive = w.alert;
             }
+
+            allAlerts.push({
+                rule_id: w.rule_id,
+                rule: w.rule,
+                bDate: new Date(bDate).toLocaleFormat('%d.%m.%Y %H:%M:%S'),
+                eDate: new Date(eDate).toLocaleFormat('%d.%m.%Y %H:%M:%S'),
+                val: w.count,
+                isActive: w.alert
+            });
         });
 
-        var grid = $("#alertsGrid").kendoGrid({
-            toolbar: kendo.template($("#alertGridToolbartemplate").html()),
-            dataSource: {
-                data: alerts,
-                schema: {
-                    model: {
-                        fields: {
-                            id: { type: "number" },
-                            rule: { type: "string" },
-                            bDate: { type: "string" },
-                            eDate: { type: "string" },
-                            val: { type: "number" },
-                            isActive: { type: "boolean" }
-                        }
-                    },
-                    total: function (response) {
-                        return response.length;
-                    },
+        const ds = new kendo.data.DataSource({
+            data: alerts,
+            schema: {
+                model: {
+                    fields: {
+                        rule_id: { type: "number" },
+                        rule: { type: "string" },
+                        bDate: { type: "string" },
+                        eDate: { type: "string" },
+                        val: { type: "number" },
+                        isActive: { type: "boolean" }
+                    }
                 },
-                pageSize: 20
+                total: function (response) {
+                    return response.length;
+                },
             },
+            pageSize: 20,
+            autoSync: true
+        });
+
+        const alertGrid = $("#alertsGrid").kendoGrid({
+            height: '580px',
             scrollable: true,
             sortable: true,
             filterable: true,
@@ -174,7 +187,7 @@ function prepareAlertsGrid() {
                 numeric: false
             },
             columns: [
-                { field: "id", title: "Номер" },
+                { field: "rule_id", title: "Номер" },
                 { field: "rule", title: "Правило" },
                 { field: "bDate", title: "Дата начала" },
                 { field: "eDate", title: "Дата окончания" },
@@ -196,53 +209,125 @@ function prepareAlertsGrid() {
             }
         });
 
+        $("#alertsGrid").data("kendoGrid").setDataSource(ds);
+
+        const allds = new kendo.data.DataSource({
+            data: allAlerts,
+            schema: {
+                model: {
+                    fields: {
+                        rule_id: { type: "number" },
+                        rule: { type: "string" },
+                        bDate: { type: "string" },
+                        eDate: { type: "string" },
+                        val: { type: "number" },
+                        isActive: { type: "boolean" }
+                    }
+                },
+                total: function (response) {
+                    return response.length;
+                },
+            },
+            pageSize: 20,
+            autoSync: true
+        });
+
+        let allGrid = $("#allAlertsGrid").kendoGrid({
+            height: '580px',
+            scrollable: true,
+            sortable: true,
+            filterable: true,
+            pageable: {
+                input: true,
+                numeric: false
+            },
+            columns: [
+                { field: "rule_id", title: "Номер" },
+                { field: "rule", title: "Правило" },
+                { field: "bDate", title: "Дата начала" },
+                { field: "eDate", title: "Дата окончания" },
+                { field: "val", title: "Последнее значение" }
+            ],
+            dataBound: function (e) {
+                var rows = e.sender.tbody.children();
+
+                for (var j = 0; j < rows.length; j++) {
+                    var row = $(rows[j]);
+                    var dataItem = e.sender.dataItem(row);
+
+                    if (dataItem.get("isActive") == true) {
+                        row.addClass("red");
+                    } else {
+                        row.addClass("green");
+                    }
+                }
+            }
+        });
+
+        $("#allAlertsGrid").data("kendoGrid").setDataSource(allds);
+
+        if ($("#allAlerts").is(":checked")) {
+            $("#allAlertsGrid").show();
+            $("#alertsGrid").hide();
+        } else {
+            setTimeout(() => {
+                $("#allAlertsGrid").hide()
+            }, 500);
+            $("#alertsGrid").show();
+        }
+
         if (!refreshAlertsButton) {
-            refreshAlertsButton = grid.find("#refreshAlerts").kendoButton({
+            refreshAlertsButton = $("#refreshAlerts").kendoButton({
                 click: function (e) {
                     prepareAlertsGrid();
                 }
             });
         }
 
-        alertsInterval = setInterval(prepareAlertsGrid, 5000);
+        // alertsInterval = setInterval(prepareAlertsGrid, 5000);
     });
 }
 
+$("#allAlerts").on("click", () => {
+    prepareAlertsGrid();
+})
 function renderAlerts() {
     prepareAlertsGrid().then(_ => {
         $("#alertsWindow").kendoWindow({
             title: "Журнал событий",
             width: '80%',
+            height: '650px',
             visible: false,
             actions: [
                 "Minimize",
                 "Maximize",
                 "Close"
-            ],
+            ]/*,
             close: function () {
                 clearInterval(alertsInterval);
-            }
+            }*/
         }).data("kendoWindow").center().open();
     });
 }
 
-var chart1 = [
-    'WQ2_0151_12_106_09.Well191.ESP.Status_Local',
-    'WQ2_0151_12_106_09.Well191.ESP.Underload_SP',
-    'WQ2_0151_12_106_09.Well191.ESP.Status_LastShutdownReason',
-    'WQ2_0151_12_106_09.Well191.ESP.HIDCPassiveCurrentLeakage_Enable'
-];
+const charts = {
+    chart1: [
+        'WQ2_0151_12_106_09.Well191.ESP.Status_Local',
+        'WQ2_0151_12_106_09.Well191.ESP.Underload_SP',
+        'WQ2_0151_12_106_09.Well191.ESP.Status_LastShutdownReason',
+        'WQ2_0151_12_106_09.Well191.ESP.HIDCPassiveCurrentLeakage_Enable'
+    ],
 
-var chart2 = [
-    'WQ2_0151_12_106_09.Well191.Well.IPM_WaterRate_Std',
-    'WQ2_0151_12_106_09.Well191.Well.PIC004_CV',
-    'WQ2_0151_12_106_09.Well191.Well.WellTest_EndTime'
-];
+    chart2: [
+        'WQ2_0151_12_106_09.Well191.Well.IPM_WaterRate_Std',
+        'WQ2_0151_12_106_09.Well191.Well.PIC004_CV',
+        'WQ2_0151_12_106_09.Well191.Well.WellTest_EndTime'
+    ],
 
-var chart3 = [
-    'WQ2_0151_12_106_09.Well191.Well.IPM_OilRate_Std'
-];
-
+    chart3: [
+        'WQ2_0151_12_106_09.Well191.Well.IPM_OilRate_Std'
+    ]
+}
 let renderDashboardChartsInterval = 0;
 function renderDashboardCharts() {
 
@@ -263,7 +348,7 @@ function renderDashboardCharts() {
 
 function renderDashboardChart(name, type, period, from, to) {
     return Promise
-        .all(window[name].map(x => getTagData(x, period, from, to)))
+        .all(charts[name].map(x => getTagData(x, period, from, to)))
         .then(responses => {
             let series = [];
             let categories = [];
@@ -444,7 +529,7 @@ function getLastTagsState() {
         .then(responses => {
             responses.forEach((res, index) => {
                 const arr = ((res || {}).data || []);
-                const val = arr[arr.length - 1].value
+                const val = (arr[arr.length - 1] || {}).value
                 if (view[index].set) {
                     view[index].set('state', val);
                 } else {
